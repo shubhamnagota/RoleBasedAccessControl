@@ -10,27 +10,27 @@ const {
   findRole
 } = require("./extras/utils");
 
-checkRoleBasedAccess = (user, v_action, v_resource) => {
+checkRoleBasedAccess = (user, v_action, v_resource, callback) => {
   let access = false;
   user._roles.forEach(roleName => {
-    if (access === true) return access;
     let role = findRole(roleName);
-    if (access === true) return access;
     role._resources.forEach(resource => {
-      if (access === true) return access;
       if (
         resource.resourceName.toUpperCase() === v_resource._name.toUpperCase()
       ) {
         resource.actionsAllowed.find(action => {
-          if (action === v_action._name) access = true;
+          if (action === v_action._name) {
+            access = true;
+            return callback(null, true);
+          }
         });
       }
     });
   });
-  return access;
+  access ? "" : callback(true, null);
 };
 
-checkAccess = inputData => {
+checkAccess = (inputData, callback) => {
   let inputArray = inputData.split(" ");
   if (inputArray.length !== 3) return "Wrong inputs given\n";
   let [username, actionType, resourceName] = inputArray;
@@ -43,9 +43,15 @@ checkAccess = inputData => {
   let resourceCheck = checkResource(resourceName);
   if (!resourceCheck) return "Resource not found.\n";
 
-  return checkRoleBasedAccess(userNameCheck, actionCheck, resourceCheck)
-    ? "\nAuthorized\n"
-    : "\nNot Authorized\n";
+  checkRoleBasedAccess(
+    userNameCheck,
+    actionCheck,
+    resourceCheck,
+    (err, success) => {
+      callback(success ? "\nAuthorized\n" : "\nNot Authorized\n");
+      return;
+    }
+  );
 };
 
 printData();
@@ -61,7 +67,7 @@ var waitForUserInput = function() {
     if (answer == "exit") {
       rl.close();
     } else {
-      console.log(checkAccess(answer));
+      checkAccess(answer, output => console.log(output));
       waitForUserInput();
     }
   });
